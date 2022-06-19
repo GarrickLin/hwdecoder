@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(h264decoder)
 
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
 set (BuildExamples False CACHE BOOL "Build the examples")
@@ -21,6 +22,7 @@ find_path( AVUTIL_INCLUDE_DIR libavutil/avutil.h )
 find_library( AVUTIL_LIBRARY avutil )
 find_path( SWSCALE_INCLUDE_DIR libswscale/swscale.h )
 find_library( SWSCALE_LIBRARY swscale )
+
 
 set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
 set(FFMPEG_INCLUDE_DIR ${AVCODEC_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR})
@@ -46,16 +48,26 @@ if (NOT WIN32)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
 endif()
 
+aux_source_directory(src decoder_src)
 
-add_library(h264decoderlib STATIC src/h264decoder.cpp src/h264decoder.hpp)
-target_sources(h264decoderlib PUBLIC src/h264decoder.hpp)
+add_library(h264decoderlib STATIC ${decoder_src})
 target_link_libraries(h264decoderlib PUBLIC ${FFMPEG_LIBRARIES})
 target_include_directories(h264decoderlib PUBLIC ${FFMPEG_INCLUDE_DIR})
 target_include_directories(h264decoderlib PUBLIC "src")
 
-pybind11_add_module(h264decoder src/h264decoder_python.cpp)
+pybind11_add_module(h264decoder python/h264decoder_python.cpp)
 target_link_libraries(h264decoder PRIVATE h264decoderlib)
 
 if (BuildExamples)
   add_subdirectory(examples)
 endif ()
+
+find_path( AVFORMAT_INCLUDE_DIR libavformat/avformat.h )
+find_library( AVFORMAT_LIBRARY avformat )
+
+add_executable(hw_decode tests/hw_decode.c)
+target_link_libraries(hw_decode PUBLIC h264decoderlib ${AVFORMAT_LIBRARY})
+target_include_directories(hw_decode PUBLIC ${AVFORMAT_INCLUDE_DIR})
+
+add_executable(test_hw_decoder tests/test_hw_decoder.cpp)
+target_link_libraries(test_hw_decoder PUBLIC h264decoderlib)

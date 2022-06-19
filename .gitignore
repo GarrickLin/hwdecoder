@@ -62,3 +62,5 @@ dist/
 *.egg-info/
 *build*/
 testclip.h264
+
+.vscode/
