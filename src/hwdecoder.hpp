@@ -55,6 +55,7 @@ class HWDecoder
   /* Persistent things here, using RAII for cleanup. */
   AVCodecContext        *context;
   AVFrame               *frame;
+  AVFrame               *sw_frame;
   AVCodec               *codec;
   AVCodecParserContext  *parser;
   /* In the documentation example on the github master branch, the 
@@ -78,21 +79,21 @@ bytes at frame boundaries.
 };
 
 // TODO: Rename to OutputStage or so?!
-class ConverterRGB24
+class ConverterBGR24
 {
   SwsContext *context;
-  AVFrame *framergb;
+  AVFrame *framebgr;
   
 public:
-  ConverterRGB24();
-  ~ConverterRGB24();
+  ConverterBGR24();
+  ~ConverterBGR24();
    
   /*  Returns, given a width and height, 
       how many bytes the frame buffer is going to need. */
   int predict_size(int w, int h);
-  /*  Given a decoded frame, convert it to RGB format and fill 
+  /*  Given a decoded frame, convert it to BGR format and fill 
 out_rgb with the result. Returns a AVFrame structure holding 
-additional information about the RGB frame, such as the number of
+additional information about the BGR frame, such as the number of
 bytes in a row and so on. */
   const AVFrame& convert(const AVFrame &frame, uint8_t* out_rgb);
 };

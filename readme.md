@@ -71,6 +71,13 @@ python setup.py build_ext --cmake-args="-DCMAKE_TOOLCHAIN_FILE=[path to vcpkg]/s
 pip install -e .
 ```
 
+We can also build with a wheel file.
+
+```bash
+python setup.py build_ext --cmake-args="-DCMAKE_TOOLCHAIN_FILE=[path to vcpkg]/scripts/buildsystems/vcpkg.cmake"
+pip wheel -e .
+```
+
 The ```-e``` option installs symlinks to the build directory. Useful for development. Leave it out otherwise.
 
 ----------------------------------------------

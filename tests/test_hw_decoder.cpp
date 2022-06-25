@@ -1,4 +1,6 @@
 #include <vector>
+#include <chrono>
+#include <iostream>
 
 extern "C"
 {
@@ -6,6 +8,7 @@ extern "C"
 }
 
 #include "hwdecoder.hpp"
+// #include "h264decoder.hpp"
 
 /* shamelessly copy pasted from
  * http://dranger.com/ffmpeg/tutorial01.html
@@ -39,7 +42,10 @@ static constexpr int file_read_size = 1024;
 int main(int argc, char *argv[])
 {
     HWDecoder decoder("h264", "dxva2");
-    ConverterRGB24 converter;
+    ConverterBGR24 converter;
+
+    // H264Decoder decoder;
+    // ConverterRGB24 converter;
 
     std::FILE *fp = std::fopen(argv[1], "rb");
     if (!fp)
@@ -49,6 +55,7 @@ int main(int argc, char *argv[])
     }
 
     int frame_num = 0;
+    int64_t time_elapsed_all = 0;
     std::vector<uint8_t> framebuffer;
     std::vector<uint8_t> buffer(file_read_size);
     for (;;)
@@ -62,24 +69,26 @@ int main(int argc, char *argv[])
         {
             int num_parsed = decoder.parse(data, n);
             n -= num_parsed;
-            data += num_parsed;
-
-            if (decoder.is_frame_available())
-            {
+            data += num_parsed;            
+            if (decoder.is_frame_available()) {
+                auto begin = std::chrono::steady_clock::now();
                 const AVFrame &frame = decoder.decode_frame();
                 static uint64_t count = 0;
                 // NOTE: pixel format of enum symbol named AV_PIX_FMT_YUV420P comes out of h264 decoder.
                 //  This symbols happens to have numeric value zero. So it is no bug when frame->format == 0.
-                printf("frame decoded: %i x %i, fmt = %i, frame count %d\n", frame.width, frame.height, frame.format, count++);
-
-                // framebuffer.resize(converter.predict_size(frame.width, frame.height));
-                // const AVFrame &rgbframe = converter.convert(frame, &framebuffer[0]);
-
-                // ++frame_num;
+                // printf("frame decoded: %i x %i, fmt = %i, frame count %d\n", frame.width, frame.height, frame.format, count++);
+                framebuffer.resize(converter.predict_size(frame.width, frame.height));
+                const AVFrame &rgbframe = converter.convert(frame, &framebuffer[0]);
+                auto end = std::chrono::steady_clock::now();
+                int64_t time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                std::cout << "Time elapsed = " << time_elapsed << "[ms]" << std::endl;
+                time_elapsed_all += time_elapsed;
+                ++frame_num;
                 // SaveFrame(rgbframe, frame_num);
-            }
-        } // while(n)
+            }            
+        }        
     }
+    std::cout << "Decode to BGR frame rate: " << frame_num * 1000 / double(time_elapsed_all)   << " fps\n";
 
     return 0;
 }

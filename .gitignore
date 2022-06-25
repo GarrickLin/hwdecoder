@@ -64,3 +64,4 @@ dist/
 testclip.h264
 
 .vscode/
+*.whl

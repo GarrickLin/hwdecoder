@@ -2,15 +2,14 @@ cmake_minimum_required(VERSION 3.14)
 project(h264decoder)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Debug)
 
 set (BuildExamples False CACHE BOOL "Build the examples")
 
 # Not working on Windows
-#   find_package(PkgConfig REQUIRED)
-#   pkg_check_modules(libswscale REQUIRED libswscale)
-#   pkg_check_modules(libavutil REQUIRED libavutil)
-#   pkg_check_modules(libavcodec REQUIRED libavcodec)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(libswscale REQUIRED libswscale)
+# pkg_check_modules(libavutil REQUIRED libavutil)
+# pkg_check_modules(libavcodec REQUIRED libavcodec)
 #
 # Not on Ubuntu ...
 # find_package(FFMPEG REQUIRED swscale avutil avcodec)
@@ -36,8 +35,10 @@ else()
   include(FetchContent)
   FetchContent_Declare(
     pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG v2.5.0)
+    GIT_REPOSITORY https://gitee.com/mirrors/pybind11
+    GIT_TAG v2.5.0
+    GIT_SUBMODULES ""
+    )
   FetchContent_MakeAvailable(pybind11)
 endif()
 
@@ -50,13 +51,14 @@ endif()
 
 aux_source_directory(src decoder_src)
 
-add_library(h264decoderlib STATIC ${decoder_src})
-target_link_libraries(h264decoderlib PUBLIC ${FFMPEG_LIBRARIES})
-target_include_directories(h264decoderlib PUBLIC ${FFMPEG_INCLUDE_DIR})
-target_include_directories(h264decoderlib PUBLIC "src")
+set(hw_decoder_src src/hwdecoder.cpp)
+add_library(hwdecoderlib STATIC ${hw_decoder_src})
+target_link_libraries(hwdecoderlib PUBLIC ${FFMPEG_LIBRARIES})
+target_include_directories(hwdecoderlib PUBLIC ${FFMPEG_INCLUDE_DIR})
+target_include_directories(hwdecoderlib PUBLIC "src")
 
-pybind11_add_module(h264decoder python/h264decoder_python.cpp)
-target_link_libraries(h264decoder PRIVATE h264decoderlib)
+pybind11_add_module(hwdecoder python/hwdecoder_python.cpp)
+target_link_libraries(hwdecoder PRIVATE hwdecoderlib)
 
 if (BuildExamples)
   add_subdirectory(examples)
@@ -66,8 +68,8 @@ find_path( AVFORMAT_INCLUDE_DIR libavformat/avformat.h )
 find_library( AVFORMAT_LIBRARY avformat )
 
 add_executable(hw_decode tests/hw_decode.c)
-target_link_libraries(hw_decode PUBLIC h264decoderlib ${AVFORMAT_LIBRARY})
+target_link_libraries(hw_decode PUBLIC hwdecoderlib ${AVFORMAT_LIBRARY})
 target_include_directories(hw_decode PUBLIC ${AVFORMAT_INCLUDE_DIR})
 
 add_executable(test_hw_decoder tests/test_hw_decoder.cpp)
-target_link_libraries(test_hw_decoder PUBLIC h264decoderlib)
+target_link_libraries(test_hw_decoder PUBLIC hwdecoderlib)
