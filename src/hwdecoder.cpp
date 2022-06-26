@@ -9,14 +9,13 @@ extern "C"
 
 #include "hwdecoder.hpp"
 
-static AVBufferRef *hw_device_ctx = nullptr;
 static enum AVPixelFormat hw_pix_fmt;
 
-static int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
+int HWDecoder::hw_decoder_init(AVCodecContext *ctx, int type)
 {
   int err = 0;
 
-  if ((err = av_hwdevice_ctx_create(&hw_device_ctx, type,
+  if ((err = av_hwdevice_ctx_create(&hw_device_ctx, (enum AVHWDeviceType)type,
                                     NULL, NULL, 0)) < 0)
   {
     fprintf(stderr, "Failed to create specified HW device.\n");
@@ -133,6 +132,7 @@ HWDecoder::~HWDecoder()
   av_free(context);
   av_frame_free(&frame);
   av_frame_free(&sw_frame);
+  av_buffer_unref(&hw_device_ctx);
 #if 1
   delete pkt;
 #endif
@@ -161,19 +161,23 @@ const AVFrame &HWDecoder::decode_frame()
     if (!ret)
     {
       ret = avcodec_receive_frame(context, frame);
-      if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+      {
         av_frame_free(&frame);
         av_frame_free(&sw_frame);
       }
-      if(ret) {
+      if (ret)
+      {
         return *sw_frame;
       }
     }
-    if(frame->format == hw_pix_fmt) {
+    if (frame->format == hw_pix_fmt)
+    {
       /* retrieve data from GPU to CPU */
       ret = av_hwframe_transfer_data(sw_frame, frame, 0);
-      if (ret < 0) {
-        fprintf(stderr, "Error transferring the data to system memory\n");        
+      if (ret < 0)
+      {
+        fprintf(stderr, "Error transferring the data to system memory\n");
       }
       return *sw_frame;
     }
@@ -187,7 +191,6 @@ const AVFrame &HWDecoder::decode_frame()
   return *frame;
 #endif
 }
-
 
 ConverterBGR24::ConverterBGR24()
 {
@@ -203,19 +206,19 @@ ConverterBGR24::~ConverterBGR24()
   av_frame_free(&framebgr);
 }
 
-const AVFrame& ConverterBGR24::convert(const AVFrame &frame, uint8_t* out_rgb)
+const AVFrame &ConverterBGR24::convert(const AVFrame &frame, uint8_t *out_rgb)
 {
   int w = frame.width;
   int h = frame.height;
   int pix_fmt = frame.format;
 
-  context = sws_getCachedContext(context, 
-                                 w, h, (AVPixelFormat)pix_fmt, 
+  context = sws_getCachedContext(context,
+                                 w, h, (AVPixelFormat)pix_fmt,
                                  w, h, AV_PIX_FMT_BGR24, SWS_BILINEAR,
                                  nullptr, nullptr, nullptr);
   if (!context)
     throw HWDecodeFailure("cannot allocate context");
-  
+
   // Setup framebgr with out_rgb as external buffer. Also say that we want BGR24 output.
   av_image_fill_arrays(framebgr->data, framebgr->linesize, out_rgb, AV_PIX_FMT_BGR24, w, h, 1);
   // Do the conversion.
@@ -229,8 +232,8 @@ const AVFrame& ConverterBGR24::convert(const AVFrame &frame, uint8_t* out_rgb)
 /*
 Determine required size of framebuffer.
 
-avpicture_get_size is used in http://dranger.com/ffmpeg/tutorial01.html 
-to do this. However, avpicture_get_size returns the size of a compact 
+avpicture_get_size is used in http://dranger.com/ffmpeg/tutorial01.html
+to do this. However, avpicture_get_size returns the size of a compact
 representation, without padding bytes. Since we use av_image_fill_arrays to
 fill the buffer we should also use it to determine the required size.
 */

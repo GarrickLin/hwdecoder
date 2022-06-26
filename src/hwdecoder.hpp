@@ -27,6 +27,7 @@ struct AVCodec;
 struct AVCodecParserContext;
 struct SwsContext;
 struct AVPacket;
+struct AVBufferRef;
 
 
 class HWException : public std::runtime_error
@@ -58,12 +59,14 @@ class HWDecoder
   AVFrame               *sw_frame;
   AVCodec               *codec;
   AVCodecParserContext  *parser;
+  AVBufferRef           *hw_device_ctx = nullptr;
   /* In the documentation example on the github master branch, the 
 packet is put on the heap. This is done here to store the pointers 
 to the encoded data, which must be kept around  between calls to 
 parse- and decode frame. In release 11 it is put on the stack, too. 
   */
   AVPacket              *pkt;
+  int hw_decoder_init(AVCodecContext *ctx, int type);
 public:
   HWDecoder(const std::string& codename, const std::string& hwtype);
   ~HWDecoder();
