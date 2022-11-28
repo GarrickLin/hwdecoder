@@ -96,7 +96,7 @@ cmake --build .
 Should be a matter of installing the libav or ffmpeg libraries. On Debian or Ubuntu:
 
 ```bash
-sudo apt install libswscale-dev libavcodec-dev libavutil-dev
+sudo apt install libswscale-dev libavcodec-dev libavutil-dev libavformat-dev
 ```
 
 And then running
